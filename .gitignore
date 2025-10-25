@@ -7,4 +7,7 @@ __pycache__/
 
 # Virtual environment folder
 .venv/
-```
+
+# Ignore local docker-compose configurations
+docker-compose.yaml
+docker-compose.yaml.bak
