@@ -1,0 +1,39 @@
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx-app
+    restart: unless-stopped
+    ports:
+      - "18554:8554"
+    volumes:
+      - ./config/mediamtx.yaml:/mediamtx.yaml
+    logging:
+      driver: "gelf"
+      options:
+        gelf-address: "udp://10.20.1.56:12201"
+        tag: "{{.Name}}"
+
+
+  ffmpeg-manager:
+    build:
+      context: ./ffmpeg_manager
+    container_name: ffmpeg_manager
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+
+    # 👇 Add these lines
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+
+    volumes:
+      - ./config/cameras.yaml:/config/cameras.yaml:ro
+    ports:
+      - "18890:8080"
+    logging:
+      driver: "gelf"
+      options:
+        gelf-address: "udp://10.20.1.56:12201"
+        tag: "{{.Name}}"

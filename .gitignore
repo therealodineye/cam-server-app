@@ -1,0 +1,10 @@
+# Ignore the specific camera config with secrets
+config/cameras.yaml
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Virtual environment folder
+.venv/
+```

@@ -1,0 +1,56 @@
+# This is an example configuration file.
+# Copy this file to 'cameras.yaml' and fill in your actual camera details.
+# The 'cameras.yaml' file is ignored by git, so your secrets are safe.
+
+- camera:
+    name: "garage-cam"
+    ip: "YOUR_CAMERA_IP"
+    user: "YOUR_USER"
+    pass: "YOUR_PASSWORD"
+
+    # --- Stream URL Path ---
+    # The part of the RTSP URL that comes after the IP address.
+    # To use the low-quality stream, comment out the HQ line and un-comment the LQ line.
+    # rtsp_path: "/user=jane_password=pass_channel=0_stream=1&onvif=0.sdp?real_stream" # Low Quality (LQ)
+    rtsp_path: "/user=jane_password=pass_channel=0_stream=0&onvif=0.sdp?real_stream" # High Quality (HQ)
+
+    processing:
+      # --- Codec Settings ---
+      # 'h265' (for HEVC streams) or 'h264'
+      input_codec: "h265"
+      # 'h264', 'h265', or 'copy' (to pass through without transcoding)
+      output_codec: "h264"
+
+      # Bitrate settings are only used when transcoding (i.e., output_codec is not 'copy')
+      bitrate: "4M"
+      maxrate: "8M"
+
+      # --- Splitting Settings ---
+      split:
+        enabled: true
+        type: "vertical" # 'vertical' or 'horizontal'
+
+      # --- Audio Settings ---
+      audio:
+        enabled: true
+        # Which output gets audio when splitting is enabled.
+        # Options: 'part1', 'part2', 'both'.
+        # Ignored if split.enabled is false or audio.enabled is false.
+        output: "part1"
+
+- camera:
+    name: "living-room-cam"
+    ip: "ANOTHER_IP_ADDRESS"
+    user: "admin"
+    pass: "AnotherPassword"
+
+    rtsp_path: "/stream1"
+
+    processing:
+      # This camera is already H264, and we want to keep the audio without splitting.
+      input_codec: "h264"
+      output_codec: "copy" # 'copy' is efficient and preserves the original stream
+      split:
+        enabled: false
+      audio:
+        enabled: true

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFmpeg Manager Status</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .online {
+            background-color: #22c55e;
+        }
+        .offline, .error {
+            background-color: #ef4444;
+        }
+        .connecting, .initializing {
+            background-color: #eab308;
+        }
+        .details {
+            font-size: 0.8rem;
+            color: #9ca3af; /* text-gray-400 */
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-white">FFmpeg Camera Manager</h1>
+            <p class="text-gray-400">Live status of all configured camera streams.</p>
+        </header>
+        <main>
+            <div id="camera-status-container" class="bg-gray-800 shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 border-b border-gray-700 pb-2">Camera Status</h2>
+                <div id="camera-list" class="space-y-4">
+                    <p class="text-gray-500">Loading camera statuses...</p>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center text-gray-600 mt-12">
+            <p>FFmpeg Manager v2.0 (Refactored)</p>
+        </footer>
+    </div>
+
+    <script>
+        const cameraList = document.getElementById('camera-list');
+        const statusClasses = {
+            online: 'bg-green-500/20 text-green-400',
+            offline: 'bg-red-500/20 text-red-400',
+            error: 'bg-red-500/20 text-red-400',
+            connecting: 'bg-yellow-500/20 text-yellow-400',
+            initializing: 'bg-yellow-500/20 text-yellow-400'
+        };
+
+        async function fetchStatuses() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const statuses = await response.json();
+
+                cameraList.innerHTML = ''; 
+
+                if (Object.keys(statuses).length === 0) {
+                    cameraList.innerHTML = '<p class="text-gray-500">No cameras configured.</p>';
+                    return;
+                }
+
+                const sorted = Object.entries(statuses).sort(([a], [b]) => a.localeCompare(b));
+
+                for (const [name, data] of sorted) {
+                    const status = data.status ? data.status.toLowerCase() : 'unknown';
+                    const badgeClass = statusClasses[status] || 'bg-gray-500/20 text-gray-400';
+                    const resolution = data.resolution || 'N/A';
+                    const bitrate = data.bitrate ? `${data.bitrate}` : 'N/A';
+                    const splitting = data.splitting || 'N/A';
+
+                    const statusItem = document.createElement('div');
+                    statusItem.className = 'flex items-center bg-gray-700 p-3 rounded-md';
+                    statusItem.innerHTML = `
+                        <div class="flex items-center flex-grow">
+                            <span class="status-dot ${status}" title="${status}"></span>
+                            <span class="font-mono font-semibold text-lg text-white truncate">${name}</span>
+                            <div class="details">
+                                <span>Resolution: ${resolution}</span>
+                                <span class="ml-4">Bitrate: ${bitrate}</span>
+                                <span class="ml-4">Split: ${splitting}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <button class="restart-btn text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded hover:bg-blue-500/40" data-cam-name="${name}">Restart</button>
+                            <span class="ml-4 text-sm font-medium uppercase px-2 py-1 rounded ${badgeClass}">${data.status || 'UNKNOWN'}</span>
+                        </div>
+                    `;
+                    cameraList.appendChild(statusItem);
+                }
+
+                // Add event listeners for the new restart buttons
+                document.querySelectorAll('.restart-btn').forEach(button => {
+                    button.addEventListener('click', async (event) => {
+                        event.stopPropagation();
+                        const camName = event.currentTarget.dataset.camName;
+                        if (confirm(`Are you sure you want to restart camera '${camName}'?`)) {
+                            try {
+                                const response = await fetch(`/api/restart/${camName}`, { method: 'POST' });
+                                if (response.ok) {
+                                    alert(`Camera '${camName}' is restarting.`);
+                                    fetchStatuses(); // Refresh statuses
+                                } else {
+                                    const errorData = await response.json();
+                                    alert(`Error restarting camera: ${errorData.error}`);
+                                }
+                            } catch (error) {
+                                alert(`An error occurred: ${error}`);
+                            }
+                        }
+                    });
+                });
+
+            } catch (error) {
+                cameraList.innerHTML = `<p class="text-red-400">Error fetching statuses: ${error.message}</p>`;
+                console.error('Error fetching statuses:', error);
+            }
+        }
+
+        // Fetch statuses immediately and then every 5 seconds
+        fetchStatuses();
+        setInterval(fetchStatuses, 5000);
+    </script>
+</body>
+</html>
