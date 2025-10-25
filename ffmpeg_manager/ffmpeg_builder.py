@@ -26,6 +26,9 @@ def get_input_url(camera_config):
 def get_codec_parameters(processing_config, hwaccel_enabled):
     input_codec = processing_config.get("input_codec", "h264")
     output_codec = processing_config.get("output_codec", "copy")
+    details = {
+        "codec": output_codec
+    }
 
     if hwaccel_enabled:
         if input_codec == "h265":
@@ -50,6 +53,7 @@ def get_codec_parameters(processing_config, hwaccel_enabled):
     if output_codec != "copy":
         bitrate = processing_config.get("bitrate", "2M")
         maxrate = processing_config.get("maxrate", "4M")
+        details["bitrate"] = bitrate
 
         maxrate_k = _get_bitrate_in_k(maxrate)
         bufsize_k = maxrate_k * 2
@@ -62,7 +66,7 @@ def get_codec_parameters(processing_config, hwaccel_enabled):
         if keyframe_interval:
             output_option_params.extend(["-g", str(keyframe_interval)])
 
-    return input_params, output_params, output_option_params
+    return input_params, output_params, output_option_params, details
 
 
 def build_ffmpeg_command(camera_config):
@@ -72,7 +76,7 @@ def build_ffmpeg_command(camera_config):
     processing_config = cam_info.get("processing", {})
     hwaccel_enabled = processing_config.get("hwaccel", True)
 
-    input_codec_params, output_codec_params, output_option_params = (
+    input_codec_params, output_codec_params, output_option_params, codec_details = (
         get_codec_parameters(processing_config, hwaccel_enabled)
     )
 
@@ -109,6 +113,13 @@ def build_ffmpeg_command(camera_config):
     ]
 
     split_config = processing_config.get("split", {})
+    details = {
+        "camera": cam_name,
+        "splitting": "Enabled" if split_config.get("enabled", False) else "Disabled",
+        "audio": "copy" if not split_config.get("enabled", False) else "part2 only",
+    }
+    details.update(codec_details)
+
     if split_config.get("enabled", False):
         split_type = split_config.get("type", SPLIT_TYPE_VERTICAL)
         if split_type == SPLIT_TYPE_HORIZONTAL:
@@ -157,13 +168,5 @@ def build_ffmpeg_command(camera_config):
             "-rtsp_transport", "tcp",
             f"rtsp://mediamtx:8554/{cam_name}",
         ]
-
-    details = {
-        "camera": cam_name,
-        "codec": processing_config.get("output_codec", "copy"),
-        "bitrate": processing_config.get("bitrate", "N/A") if processing_config.get("output_codec", "copy") != "copy" else "N/A",
-        "splitting": "Enabled" if split_config.get("enabled", False) else "Disabled",
-        "audio": "copy" if not split_config.get("enabled", False) else "part2 only",
-    }
 
     return cmd, details
