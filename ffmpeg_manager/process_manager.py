@@ -63,7 +63,7 @@ def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thre
     # --- MODIFIED: State is now passed in from the Application class ---
     hwaccel_available = thread_state.get("hwaccel_available", True)
     hwaccel_preferred = processing_config.get("hwaccel", True)
-    fallback_retry_seconds = 3600 # 1 hour
+    fallback_retry_seconds = 600 # 10 minutes
     fallback_timestamp = thread_state.get("fallback_timestamp")
 
     while not stop_event.is_set():
