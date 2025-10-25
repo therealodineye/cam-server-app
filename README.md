@@ -1,4 +1,4 @@
-# 🎥 FFmpeg Camera Stream Manager
+# 🎥 Dual lens IP cam splitter
 
 A Docker-based application for managing and processing multiple RTSP camera streams. This app was primarily built to split single streams from dual-lens cameras into two separate streams, making them usable as two different cameras in NVR systems like iSpyAgentDVR.
 
