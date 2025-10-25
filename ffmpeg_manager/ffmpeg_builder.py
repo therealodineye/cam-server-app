@@ -113,10 +113,17 @@ def build_ffmpeg_command(camera_config):
     ]
 
     split_config = processing_config.get("split", {})
+    split_enabled = split_config.get("enabled", False)
+    if split_enabled:
+        split_type = split_config.get("type", SPLIT_TYPE_VERTICAL)
+        splitting_detail = f"Enabled ({split_type.capitalize()})"
+    else:
+        splitting_detail = "Disabled"
+
     details = {
         "camera": cam_name,
-        "splitting": "Enabled" if split_config.get("enabled", False) else "Disabled",
-        "audio": "copy" if not split_config.get("enabled", False) else "part2 only",
+        "splitting": splitting_detail,
+        "audio": "copy" if not split_enabled else "part2 only",
     }
     details.update(codec_details)
 
