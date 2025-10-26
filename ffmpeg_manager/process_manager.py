@@ -59,16 +59,16 @@ def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thre
     cam_name = camera_config["camera"]["name"]
     processing_config = camera_config["camera"].get("processing", {})
     restart_delay = processing_config.get("restart_delay", 15)
-
-    # --- MODIFIED: State is now passed in from the Application class ---
-    hwaccel_available = thread_state.get("hwaccel_available", True)
     hwaccel_preferred = processing_config.get("hwaccel", True)
     fallback_retry_seconds = 600 # 10 minutes
-    fallback_timestamp = thread_state.get("fallback_timestamp")
 
     while not stop_event.is_set():
         process = None
         try:
+            # --- MODIFIED: State is now read from the shared dictionary at the start of each loop ---
+            hwaccel_available = thread_state.get("hwaccel_available", True)
+            fallback_timestamp = thread_state.get("fallback_timestamp")
+
             # --- NEW: Logic to re-enable GPU check ---
             if fallback_timestamp and (time.time() - fallback_timestamp) > fallback_retry_seconds:
                 logger.info(
@@ -77,8 +77,9 @@ def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thre
                     extra={"camera_name": cam_name}
                 )
                 thread_state["hwaccel_available"] = True
-                hwaccel_available = True
                 thread_state["fallback_timestamp"] = None
+                # Update local state for this run
+                hwaccel_available = True
                 fallback_timestamp = None
 
             camera_status.set(cam_name, "CONNECTING")
