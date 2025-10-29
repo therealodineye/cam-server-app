@@ -15,13 +15,29 @@ from camera_status import CameraStatus
 
 
 class Application:
-    def __init__(self, config_path):
+    def __init__(self, config_path, state_path="/config/state.json"):
         self.config_path = config_path
+        self.state_path = state_path
         self.running_threads = {}
         self.config_lock = threading.Lock()
         self.app_logger = logging.getLogger("FFmpegManager")
         self.observer = Observer()
         self.camera_status = CameraStatus()
+        self.state = self.load_state()
+
+    def load_state(self):
+        if os.path.exists(self.state_path):
+            with open(self.state_path, "r") as f:
+                return json.load(f)
+        return {}
+
+    def save_state(self):
+        with open(self.state_path, "w") as f:
+            json.dump(self.state, f, indent=4)
+
+    def update_camera_state(self, cam_name, new_state):
+        self.state[cam_name] = new_state
+        self.save_state()
 
     def start_camera_thread(self, camera_config, initial_state=None):
         """Starts and registers a new management thread for a single camera."""
@@ -30,14 +46,14 @@ class Application:
 
         # If no state is provided, use a default (GPU available)
         if initial_state is None:
-            initial_state = {
+            initial_state = self.state.get(cam_name, {
                 "hwaccel_available": True,
                 "fallback_timestamp": None,
-            }
+            })
 
         thread = threading.Thread(
             target=run_ffmpeg_for_camera,
-            args=(camera_config, self.app_logger, self.camera_status, stop_event, initial_state),
+            args=(self, camera_config, self.app_logger, self.camera_status, stop_event, initial_state),
             daemon=True,
         )
         thread.start()
@@ -47,6 +63,8 @@ class Application:
             "config": camera_config,
             "state": initial_state, # Store the state here
         }
+        self.state[cam_name] = initial_state
+        self.save_state()
         self.app_logger.info(
             f"Management thread for '{cam_name}' started.", extra={"camera_name": cam_name}
         )
@@ -61,6 +79,9 @@ class Application:
             self.running_threads[cam_name]["stop_event"].set()
             self.running_threads[cam_name]["thread"].join(timeout=15)
             del self.running_threads[cam_name]
+            if cam_name in self.state:
+                del self.state[cam_name]
+                self.save_state()
             self.camera_status.delete(cam_name)
             self.app_logger.info(
                 f"Thread for '{cam_name}' stopped.", extra={"camera_name": "general"}
@@ -173,6 +194,7 @@ class Application:
             "Shutdown signal received. Stopping all threads...",
             extra={"camera_name": "general"},
         )
+        self.save_state()
         self.observer.stop()
         for cam_name in list(self.running_threads.keys()):
             self.stop_camera_thread(cam_name)
@@ -259,7 +281,12 @@ if __name__ == "__main__":
         default="/config/cameras.yaml",
         help="Path to the cameras configuration file.",
     )
+    parser.add_argument(
+        "--state",
+        default="/config/state.json",
+        help="Path to the state file.",
+    )
     args = parser.parse_args()
 
-    main_app = Application(args.config)
+    main_app = Application(args.config, args.state)
     main_app.run()

@@ -54,7 +54,7 @@ def get_stream_resolution(input_url, logger, cam_name):
     return "N/A" # Return N/A on failure
 
 
-def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thread_state):
+def run_ffmpeg_for_camera(app, camera_config, logger, camera_status, stop_event, thread_state):
     """A dedicated thread function to manage a single FFmpeg process."""
     cam_name = camera_config["camera"]["name"]
     processing_config = camera_config["camera"].get("processing", {})
@@ -79,6 +79,7 @@ def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thre
                 )
                 thread_state["hwaccel_available"] = True
                 thread_state["fallback_timestamp"] = None
+                app.update_camera_state(cam_name, thread_state)
                 # Update local state for this run
                 hwaccel_available = True
                 fallback_timestamp = None
@@ -167,9 +168,8 @@ def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thre
                         extra={"camera_name": cam_name}
                     )
                     thread_state["hwaccel_available"] = False
-                    hwaccel_available = False
                     thread_state["fallback_timestamp"] = time.time()
-                    fallback_timestamp = time.time()
+                    app.update_camera_state(cam_name, thread_state)
                     continue 
             
             elif not stop_event.is_set():
