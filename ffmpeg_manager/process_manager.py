@@ -68,6 +68,7 @@ def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thre
             # --- MODIFIED: State is now read from the shared dictionary at the start of each loop ---
             hwaccel_available = thread_state.get("hwaccel_available", True)
             fallback_timestamp = thread_state.get("fallback_timestamp")
+            logger.info(f"Loop start: hwaccel_available={hwaccel_available}, fallback_timestamp={fallback_timestamp}", extra={"camera_name": cam_name})
 
             # --- NEW: Logic to re-enable GPU check ---
             if fallback_timestamp and (time.time() - fallback_timestamp) > fallback_retry_seconds:
@@ -158,6 +159,7 @@ def run_ffmpeg_for_camera(camera_config, logger, camera_status, stop_event, thre
                 
                 # --- MODIFIED: Fallback trigger ---
                 is_cuda_error = "cuda" in stderr.lower() or "cuvid" in stderr.lower() or "nvenc" in stderr.lower()
+                logger.info(f"is_cuda_error: {is_cuda_error}", extra={"camera_name": cam_name})
                 if use_hwaccel_this_run and is_cuda_error:
                     logger.warning(
                         f"CUDA error detected for camera '{cam_name}'. "
